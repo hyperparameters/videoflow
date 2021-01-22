@@ -40,21 +40,45 @@ class ImageProducer(ProducerNode):
             raise StopIteration()
 
 class ImageFolderReader(ProducerNode):
-    '''
+    """
     Reads from a folder of images and returns them one by one.
     Passes through images in alphabetical order.
-    '''
-    def __init__(self):
-        pass
-    
+    """
+
+    def __init__(self, path, formats=None):
+        super(ImageFolderReader, self).__init__()
+        self.path = path
+        if not formats:
+            self.formats = ["jpg","jpeg","png","JPG","JPEG"]
+        else:
+            self.formats = formats
+        _formats = ",".join(self.formats)
+        self.images = glob.glob(os.path.join(path,f"*[{_formats}]"))
+        try:
+            self.images = list(sorted(self.images, key= lambda x:int(os.path.basename(x).split(".")[0])))
+        except ValueError:
+            print("Images cannot be sorted with names, names are not int/float")
+
+
     def open(self):
-        raise NotImplementedError()
-    
+        self._idx = 0
+        self._max_idx = len(self.images)
+        if self._max_idx == 0:
+            _formats = ",".join(self.formats)
+            raise Exception(f"Zero images in the folder {self.path} with extension {_formats}  ")
+
     def close(self):
-        raise NotImplementedError()
-    
+        self._idx = 0
+
     def next(self) -> np.array:
-        raise NotImplementedError()
+        if self._idx<self._max_idx:
+            img_path = self.images[self._idx]
+            image = cv2.imread(img_path)
+            self._idx += 1
+            return img_path, image
+        else:
+            raise StopIteration()
+
 
 class VideoFolderReader(ProducerNode):
     '''
